@@ -1,25 +1,55 @@
-@dp.callback_query(F.data == "payment")
-async def show_payment(callback: types.CallbackQuery):
-    text = (
-        "💳 **مركز شحن الرصيد الرسمي**\n\n"
-        "يرجى التحويل إلى إحدى الحسابات التالية:\n\n"
-        "💎 **سي واليت (C-Wallet):**\n"
-        "ID: `91552675`\n\n"
-        "💸 **فوست باي (FaucetPay):**\n"
-        "اسم الحساب: `Flashnumber`\n\n"
-        "🏦 **باي بت (Bybit):**\n"
-        "ID: `493857145`\n\n"
-        "🔗 **عناوين USDT:**\n"
-        "• **BEP20:**\n`0xcc17cd115159942cbe18cc7d6ec2285d063cff23`\n\n"
-        "• **Polygon:**\n`0xcc17cd115159942cbe18cc7d6ec2285d063cff23`\n\n"
-        "⚠️ **ملاحظة:** بعد التحويل أرسل صورة الإيصال للدعم الفني ليتم شحن رصيدك."
-    )
-    
+import os
+import asyncio
+from aiogram import Bot, Dispatcher, types, F
+from aiogram.filters import Command
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+from aiohttp import web
+
+# التوكن الخاص بك
+TOKEN = '8808428811:AAFiLKSL6G-JbL6E1prOyb1L5A0hIzTIiqk'
+
+bot = Bot(token=TOKEN)
+dp = Dispatcher()
+
+# رسالة عند بدء البوت
+@dp.message(Command("start"))
+async def start(message: types.Message):
+    await message.answer("مرحباً بك في بوت الدفع الذكي!\nاستخدم الأمر /pay لعرض خيارات الدفع.")
+
+# قائمة الدفع (نجوم فقط)
+@dp.message(Command("pay"))
+async def show_payment_methods(message: types.Message):
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="💬 تواصل مع الدعم", url="https://t.me/Flashnumbersupport2")],
-        [InlineKeyboardButton(text="⬅️ رجوع", callback_data="back_main")]
+        [InlineKeyboardButton(text="💎 ادفع باستخدام نجوم تليجرام (Stars)", callback_data="pay_stars")]
     ])
-    
-    await callback.message.edit_text(text, reply_markup=keyboard, parse_mode="Markdown")
+    await message.answer("اضغط على الزر أدناه لإتمام عملية الدفع:", reply_markup=keyboard)
+
+# الرد عند الضغط على زر النجوم
+@dp.callback_query(F.data == "pay_stars")
+async def pay_stars_info(callback: types.CallbackQuery):
+    await callback.message.answer(
+        "✨ **الدفع عبر نجوم تليجرام (Stars):**\n\n"
+        "شكراً لاختيارك الدفع عبر النجوم.\n"
+        "يرجى إرسال لقطة شاشة (Screenshot) لعملية التحويل هنا لنقوم بتفعيل الخدمة لك فوراً!"
+    )
     await callback.answer()
 
+# إعداد الخادم لمنصة Railway (للمنع من الانهيار)
+async def web_server(request):
+    return web.Response(text="Bot is running!")
+
+async def main():
+    app = web.Application()
+    app.router.add_get('/', web_server)
+    runner = web.AppRunner(app)
+    await runner.setup()
+    
+    port = int(os.environ.get("PORT", 8080))
+    site = web.TCPSite(runner, '0.0.0.0', port)
+    await site.start()
+    
+    print(f"البوت يعمل الآن على المنفذ {port}...")
+    await dp.start_polling(bot)
+
+if __name__ == "__main__":
+    asyncio.run(main())
